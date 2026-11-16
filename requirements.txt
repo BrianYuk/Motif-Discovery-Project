@@ -1,0 +1,5 @@
+numpy>=1.26
+scipy>=1.11
+torch>=2.2        # CNN only; EM, Gibbs sampling and the runner work without it
+pytest>=8         # tests
+pyjaspar>=3.0     # only for scripts/build_profiles.py; data/profiles.json is already built
