@@ -12,6 +12,16 @@ import sys
 from .grid import PRESETS, preset_jobs
 
 
+def _lease_args(parser):
+    from .coordinator import DEFAULT_HEARTBEAT_S, DEFAULT_MAX_ATTEMPTS, DEFAULT_MISSED_LIMIT
+    parser.add_argument("--heartbeat", type=float, default=DEFAULT_HEARTBEAT_S,
+                        help="seconds between worker heartbeats (default %(default)s)")
+    parser.add_argument("--missed", type=int, default=DEFAULT_MISSED_LIMIT,
+                        help="missed heartbeats before a job is requeued (default %(default)s)")
+    parser.add_argument("--max-attempts", type=int, default=DEFAULT_MAX_ATTEMPTS,
+                        help="assignments before a job is recorded as failed (default %(default)s)")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="python -m runner")
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -21,6 +31,7 @@ def main(argv=None):
     c.add_argument("--results", required=True)
     c.add_argument("--host", default="0.0.0.0")
     c.add_argument("--port", type=int, default=5555)
+    _lease_args(c)
 
     w = sub.add_parser("worker", help="run jobs for a coordinator")
     w.add_argument("--host", default="127.0.0.1")
@@ -31,6 +42,7 @@ def main(argv=None):
     l.add_argument("--grid", choices=sorted(PRESETS), default="tiny")
     l.add_argument("--results", required=True)
     l.add_argument("--workers", type=int, default=2)
+    _lease_args(l)
 
     k = sub.add_parser("compare", help="check two result folders are identical")
     k.add_argument("dir_a")
@@ -40,19 +52,23 @@ def main(argv=None):
 
     if args.cmd == "coordinator":
         from .coordinator import Coordinator
-        coord = Coordinator(preset_jobs(args.grid), args.results, args.host, args.port).start()
+        coord = Coordinator(preset_jobs(args.grid), args.results, args.host, args.port,
+                            heartbeat_s=args.heartbeat, missed_limit=args.missed,
+                            max_attempts=args.max_attempts).start()
         print(f"coordinator listening on {coord.address[0]}:{coord.address[1]}, "
               f"{len(coord.pending)} jobs to run")
         coord.wait()
         coord.stop()
-        print(f"all {len(coord.done)} jobs done; duplicates discarded: {coord.duplicates}")
+        print(f"all {len(coord.done)} jobs done; requeued: {coord.requeues}; "
+              f"failed: {len(coord.failed)}; duplicates discarded: {coord.duplicates}")
     elif args.cmd == "worker":
         from .worker import run_worker
         n = run_worker(args.host, args.port, name=args.name)
         print(f"worker finished {n} jobs")
     elif args.cmd == "local":
         from .local import run_local
-        run_local(args.grid, args.results, args.workers)
+        run_local(args.grid, args.results, args.workers, heartbeat_s=args.heartbeat,
+                  missed_limit=args.missed, max_attempts=args.max_attempts)
     elif args.cmd == "compare":
         from .compare import compare
         report = compare(args.dir_a, args.dir_b)

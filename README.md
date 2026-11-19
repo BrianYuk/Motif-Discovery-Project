@@ -7,20 +7,21 @@ Brian Yuktipada (2802523004) · Jerico Tjan (2802521112)
 This repository holds the benchmark (`motifbench/`) and the distributed job runner
 (`runner/`) described in the three proposals. Everything is Python.
 
-## Status: sessions 7 to 8
+## Status: sessions 7 to 9
 
 | Timeline item | Planned | Status |
 | --- | --- | --- |
 | Generator and metrics | S7 to S8 | Done: planted-motif generator, information content, Tomtom-style similarity, site precision/recall/F1 (raw and offset-aligned) |
-| EM and Gibbs in Python | S7 to S9 | Working: ZOOPS EM with start screening and phase shifts; ZOOPS Gibbs site sampler with phase shifts. Speed-up of Gibbs left for S9 |
+| EM and Gibbs in Python | S7 to S9 | Done: ZOOPS EM with start screening and phase shifts; ZOOPS Gibbs site sampler with phase shifts, 4.7x faster in S9 with identical results |
 | CNN motif model | S8 to S10 | First version: one conv layer, max-pool, trained against dinucleotide shuffles; best filter turned into a PWM. Tuning on the pilot grid is S9 to S10 |
-| Distributed job runner | S8 to S10 | Protocol, coordinator and workers done: JSON over TCP, FIFO dispatch, results keyed by job ID (duplicates discarded), skip finished jobs on restart, seeds derived from job IDs. Heartbeats, leases, write-ahead log and LPT are S9 to S10 |
+| Distributed job runner | S8 to S10 | S8: JSON over TCP, FIFO dispatch, results keyed by job ID (duplicates discarded), skip finished jobs on restart, seeds derived from job IDs. S9: heartbeats, leases, requeueing and a retry limit. Write-ahead log and LPT are S10 |
 
 Checks run so far (2-core cloud machine):
 
-- 19 automated tests pass (`pytest`), including recovery of a strong motif by EM, Gibbs sampling and the CNN, and determinism of each method given its seed.
+- 24 automated tests pass (`pytest`), including recovery of a strong motif by EM, Gibbs sampling and the CNN, determinism of each method given its seed, and the failure tests below. The failure and runner tests passed 5 runs in a row.
 - `scripts/check_determinism.py`: 12 jobs (all three methods) on 1 worker and on 2 workers give byte-identical result hashes; 29.2 s on 1 worker against 18.7 s on 2.
-- Timing of one job at 2,000 sequences (half with a site, NFE2): EM about 25 to 55 s, Gibbs sampling about 107 s, CNN about 6 s. With 3 restarts per method, the full grid is roughly 10 CPU-hours, so about 1.5 hours on 8 workers. These are single runs, to be replaced by the pilot grid.
+- Timing of one job at 2,000 sequences (half with a site, NFE2): EM about 25 to 55 s, Gibbs sampling 22.8 s (107 s before the S9 speed-up), CNN about 6 s. With 3 restarts per method the full grid is now roughly 5 CPU-hours, so well under an hour on 8 workers. These are single runs, to be replaced by the pilot grid.
+- Failure tests (`tests/test_failures.py`): a worker process killed in the middle of a job has its job requeued, and the results match a one-worker run exactly; a hung worker that stops sending heartbeats loses its job, and the second result for that job is discarded; a job that crashes every worker that takes it is recorded in `failed/` after the retry limit, and the grid still finishes.
 
 ## Setup
 
@@ -73,6 +74,8 @@ python -m runner local --grid tiny --workers 2 --results results/tiny
 python -m runner compare results/run_a results/run_b
 ```
 
+**Fault tolerance.** While a job runs, its worker sends a heartbeat every `--heartbeat` seconds (default 2). If the coordinator hears nothing for `--missed` heartbeats in a row (default 3, so 6 s), the job goes back to the front of the queue. After `--max-attempts` assignments (default 3) it is written to `<results>/failed/` and the grid finishes without it; a failed job is tried again the next time the grid is started. A late result from a worker that was wrongly declared dead is still accepted if it is the first result for that job, and discarded otherwise, so every job is counted exactly once.
+
 Grids (`runner/grid.py`): `tiny` (8 quick jobs, for tests), `pilot` (18 conditions x 1 replicate
 x 3 methods, for timing), `full` (18 conditions x 10 replicates x 3 methods x 3 restarts = 1,620 jobs).
 Every seed comes from a SHA-256 hash of the dataset or job ID, so a job gives the same result on any worker.
@@ -84,7 +87,7 @@ motifbench/   alphabet, profiles, generator, shuffle, metrics, em, gibbs, cnn, a
 runner/       protocol, grid, tasks (run one job), coordinator, worker, local, compare, CLI
 scripts/      demo.py, check_determinism.py, build_profiles.py
 data/         profiles.json (JASPAR 2024 count matrices)
-tests/        pytest suite
+tests/        pytest suite; reference_gibbs.py is the pre-S9 Gibbs sampler, kept to check the faster one
 ```
 
 ## Findings so far, worth discussing in the reports
@@ -93,9 +96,16 @@ tests/        pytest suite
 - **ZOOPS overestimates the share of sequences with a site.** With 20% carriers, EM's estimated share can approach 50%, and weak look-alike sites lower precision. This is method behaviour, not a bug, and is what RQ2 measures.
 - **The CNN needs data.** From 300 sequences up it recovers NFE2 reliably (similarity about 0.9); at 100 sequences it often fails, especially when only half carry a site. This is the pattern H1 predicts. Its training settings (patience 15, learning rate 0.01) are provisional until the pilot tuning.
 
-## Next (session 9)
+## Who did what
 
-- Runner: heartbeats, leases and requeueing of jobs from dead workers; start the write-ahead log.
-- Gibbs: vectorise the per-sequence update to cut the 107 s per job at N = 2,000.
-- Run the pilot grid on both laptops; tune the CNN and EM settings on pilot datasets only.
-- Both strands for the real ChIP-seq data (synthetic sites are forward-strand only).
+| Session | Brian | Jerico |
+| --- | --- | --- |
+| 7 to 8 | Generator, metrics, EM, Gibbs, CNN, basic runner | |
+| 9 | Heartbeats, leases, retries; Gibbs speed-up | Results table and figures (`collect_results.py`, `plots.py`, demo logos) |
+
+## Next (session 10)
+
+- Runner: write-ahead log and coordinator recovery; LPT scheduling using the pilot timings.
+- Run the pilot grid on both laptops (Jerico's laptop as a worker); tune the CNN and EM settings on pilot datasets only.
+- Milestone presentation: generator, both classical methods, a partly trained CNN, and the runner surviving a killed worker on two machines.
+- Later: both strands for the real ChIP-seq data (synthetic sites are forward-strand only).

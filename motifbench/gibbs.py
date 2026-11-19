@@ -40,39 +40,58 @@ def zoops_score(win, sites, log_bg, pseudocount):
     return float(np.logaddexp(np.log1p(-gamma), log_site).sum()), pwm
 
 
+def _draw(logits, rng):
+    """Sample an index with probability proportional to exp(logits).
+
+    Same steps and the same single random number as rng.choice(len(p), p=p) with
+    p = exp(logits - logsumexp(logits)), without its per-call overhead."""
+    top = logits.max()
+    p = np.exp(logits - (top + np.log(np.exp(logits - top).sum())))
+    cdf = p.cumsum()
+    cdf /= cdf[-1]
+    return int(cdf.searchsorted(rng.random(), side="right"))
+
+
 def gibbs_single(X, width, rng, background, pseudocount=DEFAULT_PSEUDOCOUNT,
                  n_sweeps=200, burn_in=50, shift_every=5, max_shift=2, zoops=True):
     win = windows(X, width)
     n_seqs, m = win.shape[0], win.shape[1]
     log_bg = np.log(np.asarray(background, dtype=float))
     cols = np.arange(width)
+    log_gamma_scale = np.log(1.0 / m)
 
     sites = [int(a) for a in rng.integers(0, m, size=n_seqs)]
     counts = _site_counts(win, sites)
+    k_total = sum(a is not None for a in sites)     # kept up to date, never recounted
     best_score, best_sites = -np.inf, list(sites)
+    logits = np.empty(m + 1)
 
     for sweep in range(1, n_sweeps + 1):
         for n in rng.permutation(n_seqs):
             a_old = sites[n]
             if a_old is not None:
-                np.subtract.at(counts, (win[n, a_old], cols), 1.0)
-            k = sum(a is not None for a in sites) - (a_old is not None)
-            pwm = _pwm_from_counts(counts, k, pseudocount)
-            S = log_ratio_scores(win[n:n + 1], np.log(pwm), log_bg)[0]   # m
+                counts[win[n, a_old], cols] -= 1.0   # one cell per column, so plain indexing is exact
+                k_total -= 1
+            k = k_total
+            log_odds = np.log((counts + pseudocount) / (k + 4 * pseudocount)) - log_bg[:, None]
+            S = log_odds[win[n], cols].sum(axis=-1)                       # m
             if zoops:
                 gamma = (k + 1) / (n_seqs - 1 + 2)                        # Beta(1,1) prior
-                logits = np.concatenate([[np.log1p(-gamma)], np.log(gamma / m) + S])
+                logits[0] = np.log1p(-gamma)
+                logits[1:] = np.log(gamma) + log_gamma_scale + S
             else:
-                logits = np.concatenate([[-np.inf], S])
-            p = np.exp(logits - logsumexp(logits))
-            choice = int(rng.choice(m + 1, p=p))
+                logits[0] = -np.inf
+                logits[1:] = S
+            choice = _draw(logits, rng)
             sites[n] = None if choice == 0 else choice - 1
             if sites[n] is not None:
-                np.add.at(counts, (win[n, sites[n]], cols), 1.0)
+                counts[win[n, sites[n]], cols] += 1.0
+                k_total += 1
 
         if shift_every and sweep % shift_every == 0:
             sites = _best_phase_shift(win, sites, log_bg, pseudocount, max_shift)
             counts = _site_counts(win, sites)
+            k_total = sum(a is not None for a in sites)
 
         if sweep > burn_in or sweep == n_sweeps:
             score, _ = zoops_score(win, sites, log_bg, pseudocount)
