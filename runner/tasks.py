@@ -15,7 +15,26 @@ def _r(x):
     return round(float(x), ROUND)
 
 
+def _run_test_job(job: dict) -> dict:
+    """Test-only jobs, so failure tests do not wait on real motif finding.
+    "sleep": wait settings["seconds"], then return a fixed result.
+    "crash": raise, which ends the worker as a crash would."""
+    if job["method"] == "crash":
+        raise RuntimeError(f"test job {job['job_id']} crashed its worker on purpose")
+    t0 = time.perf_counter()
+    time.sleep(job["settings"].get("seconds", 1.0))
+    deterministic = {"job_id": job["job_id"], "method": "sleep"}
+    return {**deterministic, "result_hash": result_hash(deterministic),
+            "runtime_s": time.perf_counter() - t0}
+
+
+def make_test_job(job_id: str, method: str = "sleep", seconds: float = 1.0) -> dict:
+    return {"job_id": job_id, "method": method, "settings": {"seconds": seconds}}
+
+
 def run_job(job: dict) -> dict:
+    if job["method"] in ("sleep", "crash"):
+        return _run_test_job(job)
     d = job["dataset"]
     planted = get_pwm(d["profile"])
     ds = generate_dataset(planted, d["n_seqs"], seq_len=d["seq_len"],
