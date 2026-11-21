@@ -37,11 +37,12 @@ def test_lease_expires_heartbeat_renews_and_wrong_worker_is_ignored(tmp_path):
     assert msg["type"] == "ASSIGN" and msg["heartbeat_s"] == 1.0
     start = coord.assigned["a"]["last"]
     assert coord.check_leases(now=start + 2.9) == []              # still within 3 s
+    coord.assigned["a"]["last"] = start - 10.0                    # pretend the lease is 10 s old
     coord._heartbeat("a", "w2")                                   # not its worker: ignored
-    assert coord.assigned["a"]["last"] == start
+    assert coord.assigned["a"]["last"] == start - 10.0
     coord._heartbeat("a", "w1")                                   # renews the lease
     renewed = coord.assigned["a"]["last"]
-    assert renewed > start
+    assert renewed >= start
     assert coord.check_leases(now=renewed + 3.1) == [("a", "requeued")]
     assert list(coord.pending)[0] == "a"                          # back at the front
     coord.server.server_close()
