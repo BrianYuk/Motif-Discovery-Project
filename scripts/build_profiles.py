@@ -1,8 +1,3 @@
-"""Export the chosen JASPAR 2024 count matrices to data/profiles.json.
-
-Run once (needs `pip install pyjaspar`); the result is committed so that
-nothing else in the project needs pyjaspar or network access.
-"""
 import json
 import sys
 from pathlib import Path

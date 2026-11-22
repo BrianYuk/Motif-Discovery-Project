@@ -1,14 +1,3 @@
-"""Reference (pre-session-9) Gibbs sampler, kept only to check that the faster
-version in motifbench/gibbs.py gives the same answers. Not used by the benchmark.
-
-Gibbs site sampler for motif discovery (Lawrence et al., 1993), ZOOPS version.
-
-State: one site position per sequence, or None for "no site". Each step removes
-one sequence, rebuilds the PWM from the sites in all the others, and draws a new
-position for the removed sequence in proportion to its likelihood ratio R_n(a),
-with "no site" as one more option. Occasional phase shifts slide every site a few
-positions so the sampler does not lock onto a shifted copy of the motif.
-"""
 import numpy as np
 from scipy.special import logsumexp
 

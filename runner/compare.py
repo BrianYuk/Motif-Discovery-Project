@@ -1,4 +1,3 @@
-"""Check that two result folders hold the same results (by hash, ignoring run time)."""
 import json
 from pathlib import Path
 

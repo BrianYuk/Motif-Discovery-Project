@@ -1,10 +1,3 @@
-"""Worker: asks the coordinator for jobs, runs each on one thread, returns results.
-
-While a job runs, a background thread sends a HEARTBEAT every heartbeat_s
-seconds (the coordinator sets the interval in ASSIGN), so the coordinator knows
-the worker is alive. All writes to the socket go through one lock, so a
-heartbeat and a RESULT never interleave on the wire.
-"""
 import os
 
 # One thread per job, set before NumPy loads, so floating-point results do not
@@ -21,8 +14,6 @@ from .tasks import run_job  # noqa: E402
 
 
 class _Heartbeat:
-    """Sends HEARTBEAT {job_id} every `interval` seconds until stopped."""
-
     def __init__(self, send, worker, job_id, interval):
         self._send, self._msg, self._interval = send, {"type": P.HEARTBEAT, "worker": worker, "job_id": job_id}, interval
         self._stop = threading.Event()
@@ -46,8 +37,6 @@ class _Heartbeat:
 
 def run_worker(host: str, port: int, name: str = None, log=print, connect_timeout=30.0,
                heartbeats: bool = True):
-    """Run jobs until the coordinator says DONE. heartbeats=False simulates a hung
-    worker (used by the tests)."""
     name = name or f"{socket.gethostname()}-{os.getpid()}"
     deadline = time.time() + connect_timeout
     while True:
@@ -93,5 +82,4 @@ def run_worker(host: str, port: int, name: str = None, log=print, connect_timeou
 
 
 def worker_process(host: str, port: int, name: str):
-    """Entry point for a worker started with multiprocessing."""
     run_worker(host, port, name=name)

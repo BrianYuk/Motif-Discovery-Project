@@ -1,9 +1,3 @@
-"""The benchmark grid: data conditions x replicates x methods x restarts -> jobs.
-
-Every random seed is derived from a name (dataset ID or job ID), never from the
-worker, the clock or the order jobs run in, so any job gives the same result on
-any worker.
-"""
 import hashlib
 import itertools
 
@@ -11,7 +5,7 @@ from motifbench.profiles import STRENGTH_GROUPS
 
 
 def seed_from_id(name: str) -> int:
-    """Stable 32-bit seed from a string (SHA-256, so it is the same on every machine)."""
+    # Stable 32-bit seed from a string (SHA-256, so it is the same on every machine).
     return int.from_bytes(hashlib.sha256(name.encode()).digest()[:4], "big")
 
 

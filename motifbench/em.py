@@ -1,9 +1,3 @@
-"""Expectation maximization for motif discovery (MEME-style ZOOPS model).
-
-Model: each sequence holds zero or one site; with probability gamma it holds one,
-placed uniformly at one of m = L - W + 1 start positions; every other base is
-drawn from the background q. All likelihoods are kept in log space.
-"""
 import numpy as np
 from numpy.lib.stride_tricks import sliding_window_view
 from scipy.special import logsumexp
@@ -12,19 +6,19 @@ DEFAULT_PSEUDOCOUNT = 0.25  # per base, so one pseudo-site per column
 
 
 def windows(X: np.ndarray, width: int) -> np.ndarray:
-    """(N, L) int array -> (N, m, W) view of every W-long window."""
+    # (N, L) int array -> (N, m, W) view of every W-long window
     return sliding_window_view(X, width, axis=1)
 
 
 def log_ratio_scores(win: np.ndarray, log_pwm: np.ndarray, log_bg: np.ndarray) -> np.ndarray:
-    """log R_n(a) = sum_j log(theta[x, j] / q[x]) for every window -> (N, m)."""
+    # log R_n(a) = sum_j log(theta[x, j] / q[x]) for every window -> (N, m)
     width = win.shape[-1]
     log_odds = log_pwm - log_bg[:, None]              # 4 x W
     return log_odds[win, np.arange(width)].sum(axis=-1)
 
 
 def e_step(S: np.ndarray, gamma: float):
-    """Posterior z[n, a] that the site starts at a, and the log-likelihood ratio."""
+    # Posterior z[n, a] that the site starts at a, and the log-likelihood ratio.
     m = S.shape[1]
     log_num = np.log(gamma / m) + S                    # N x m
     log_site = logsumexp(log_num, axis=1)              # N
@@ -34,7 +28,7 @@ def e_step(S: np.ndarray, gamma: float):
 
 
 def m_step(win: np.ndarray, z: np.ndarray, pseudocount: float):
-    """Re-estimate the PWM from expected counts, and gamma from expected sites."""
+    # Re-estimate the PWM from expected counts, and gamma from expected sites.
     width = win.shape[-1]
     counts = np.empty((4, width))
     for b in range(4):
@@ -45,7 +39,7 @@ def m_step(win: np.ndarray, z: np.ndarray, pseudocount: float):
 
 
 def init_from_window(win: np.ndarray, rng: np.random.Generator, weight: float = 0.5) -> np.ndarray:
-    """Start from one random window: `weight` on its base, the rest spread evenly."""
+    # Start from one random window: `weight` on its base, the rest spread evenly.
     n = rng.integers(win.shape[0])
     a = rng.integers(win.shape[1])
     word = win[n, a]
@@ -56,8 +50,7 @@ def init_from_window(win: np.ndarray, rng: np.random.Generator, weight: float = 
 
 
 def screen_starts(win, rng, log_bg, n_candidates, gamma0):
-    """MEME-style start search: score `n_candidates` random starting words by the
-    likelihood after one E-step and return the best one."""
+    # MEME-style start search: score `n_candidates` random starting words by the likelihood after one E-step and return the best one.
     best_pwm, best_ll = None, -np.inf
     for _ in range(n_candidates):
         pwm = init_from_window(win, rng)
@@ -95,7 +88,7 @@ def em_single(X, width, rng, background, pseudocount=DEFAULT_PSEUDOCOUNT,
 
 
 def shift_pwm(pwm: np.ndarray, s: int) -> np.ndarray:
-    """Slide the matrix s columns (positive = right), filling new columns with uniform."""
+    # Slide the matrix s columns (positive = right), filling new columns with uniform.
     width = pwm.shape[1]
     out = np.full_like(pwm, 0.25)
     if s >= 0:
@@ -107,7 +100,7 @@ def shift_pwm(pwm: np.ndarray, s: int) -> np.ndarray:
 
 def em_from(X, width, pwm, gamma, background, pseudocount=DEFAULT_PSEUDOCOUNT,
             max_iter=500, tol=1e-6, zoops=True, **_):
-    """EM started from a given matrix (used for phase-shift trials)."""
+    # EM started from a given matrix (used for phase-shift trials).
     win = windows(X, width)
     log_bg = np.log(np.asarray(background, dtype=float))
     prev, n_iter = -np.inf, 0
@@ -124,8 +117,6 @@ def em_from(X, width, pwm, gamma, background, pseudocount=DEFAULT_PSEUDOCOUNT,
 
 
 def phase_shift_search(X, width, res, background, max_shift, trial_iter=20, **kwargs):
-    """Gibbs-style phase shifts for EM: restart briefly from the converged matrix slid
-    by -max_shift..max_shift columns; finish the best trial if it beats the original."""
     best_trial = None
     for s in range(-max_shift, max_shift + 1):
         if s == 0:
@@ -144,12 +135,7 @@ def phase_shift_search(X, width, res, background, max_shift, trial_iter=20, **kw
 
 def find_motif_em(X, width, seed=0, n_starts=1, background=(0.25,) * 4,
                   site_threshold=0.5, max_shift=None, **kwargs) -> dict:
-    """Run EM from `n_starts` starts and keep the highest likelihood. With
-    n_candidates > 1, each start is the best of that many screened starting words.
-
-    Returns the PWM, one predicted site per sequence (the most probable start if its
-    posterior exceeds `site_threshold`, else None) and the log-likelihood ratio.
-    """
+    # Run EM from `n_starts` starts and keep the highest likelihood. With n_candidates > 1, each start is the best of that many screened starting words.
     rng = np.random.default_rng(seed)
     if max_shift is None:
         max_shift = width // 2

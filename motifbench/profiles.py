@@ -1,8 +1,3 @@
-"""JASPAR 2024 profiles used as planted motifs.
-
-The matrices are bundled in data/profiles.json (built by scripts/build_profiles.py),
-so the generator and the live demo need no download and no pyjaspar at run time.
-"""
 import json
 from pathlib import Path
 
@@ -25,7 +20,6 @@ def counts_to_pwm(counts: np.ndarray, pseudocount_total: float = PSEUDOCOUNT_TOT
 
 
 def load_profiles(path: Path = DATA_FILE) -> dict:
-    """Return {matrix_id: {"name": str, "pwm": 4 x W array}}."""
     raw = json.loads(Path(path).read_text())
     return {
         mid: {"name": entry["name"], "pwm": counts_to_pwm(np.array(entry["counts"]))}

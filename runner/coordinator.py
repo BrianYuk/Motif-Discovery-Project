@@ -1,16 +1,3 @@
-"""Coordinator: hands out jobs to workers over TCP and stores their results.
-
-Session 9: every assigned job holds a lease that the worker renews with a
-HEARTBEAT every heartbeat_s seconds. A monitor thread requeues a job, at the
-front of the queue, once its worker has been silent for missed_limit x
-heartbeat_s seconds. After max_attempts assignments the job is recorded in
-failed/ and the grid finishes without it.
-
-Results are keyed by job ID and the first one stored wins, so a late result from
-a worker that was wrongly declared dead is discarded, never counted twice. Jobs
-whose result file already exists are skipped at start-up. The write-ahead log
-(sessions 9-10) and LPT scheduling (session 10) build on this.
-"""
 import json
 import os
 import socketserver
@@ -64,7 +51,7 @@ class Coordinator:
         self.server = Server((host, port), Handler)
         self.address = self.server.server_address
 
-    # -- message handling ---------------------------------------------------
+    # Message handling
     def _serve(self, rfile, wfile):
         while True:
             try:
@@ -98,8 +85,6 @@ class Coordinator:
             lease = self.assigned.get(job_id)
             if lease is not None and lease["worker"] == worker:
                 lease["last"] = time.monotonic()
-            # A heartbeat for a job that was already taken away is ignored: the
-            # job belongs to its new worker now.
 
     def _store(self, job_id, result):
         if job_id not in self.jobs:
@@ -109,8 +94,7 @@ class Coordinator:
             if job_id in self.done:
                 self.duplicates += 1           # first result wins
                 return False
-            # A late result can arrive while the job waits in the queue for a retry,
-            # or after it was given up; either way it is a valid first result.
+            # A late result can arrive while the job waits in the queue for a retry, or after it was given up; either way it is a valid first result.
             try:
                 self.pending.remove(job_id)
             except ValueError:
@@ -132,7 +116,7 @@ class Coordinator:
         if not self.pending and not self.assigned:
             self.finished.set()
 
-    # -- leases ---------------------------------------------------------------
+    # Leases
     def check_leases(self, now=None):
         """Requeue or give up on every job whose lease has expired. Returns the
         list of (job_id, action) taken; called by the monitor thread."""
@@ -163,7 +147,7 @@ class Coordinator:
         while not self._stopping.wait(period):
             self.check_leases()
 
-    # -- lifecycle ----------------------------------------------------------
+    # Lifecycle
     def start(self):
         threading.Thread(target=self.server.serve_forever, daemon=True).start()
         threading.Thread(target=self._monitor, daemon=True).start()

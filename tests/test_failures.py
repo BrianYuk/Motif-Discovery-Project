@@ -1,4 +1,3 @@
-"""Session 9: heartbeats, leases and retries; and the faster Gibbs sampler."""
 import sys
 import threading
 import time
@@ -29,7 +28,7 @@ def _thread_worker(coord, name, heartbeats=True, swallow=False):
     return t
 
 
-# -- leases, unit level --------------------------------------------------------
+# leases, unit level
 def test_lease_expires_heartbeat_renews_and_wrong_worker_is_ignored(tmp_path):
     jobs = [make_test_job("a"), make_test_job("b")]
     coord = Coordinator(jobs, tmp_path, log=QUIET, heartbeat_s=1.0, missed_limit=3)
@@ -48,7 +47,7 @@ def test_lease_expires_heartbeat_renews_and_wrong_worker_is_ignored(tmp_path):
     coord.server.server_close()
 
 
-# -- a worker process killed in the middle of a job ------------------------------
+# a worker process killed in the middle of a job
 def test_killed_worker_job_is_requeued_and_results_match_one_worker(tmp_path):
     # A slow job first, then the tiny grid. The worker that takes the slow job is
     # killed while it runs; the other worker must finish everything.
@@ -71,7 +70,7 @@ def test_killed_worker_job_is_requeued_and_results_match_one_worker(tmp_path):
     assert report["identical"], report
 
 
-# -- a hung worker: alive but silent ------------------------------------------------
+# a hung worker: alive but silent 
 def test_silent_worker_loses_its_job_and_the_later_result_is_discarded(tmp_path):
     coord = Coordinator([make_test_job("s1", seconds=1.5)], tmp_path, log=QUIET, **FAST).start()
     silent = _thread_worker(coord, "silent", heartbeats=False)
@@ -88,7 +87,7 @@ def test_silent_worker_loses_its_job_and_the_later_result_is_discarded(tmp_path)
     coord.stop()
 
 
-# -- a job that crashes every worker that takes it ---------------------------------
+# a job that crashes every worker that takes it
 def test_job_that_fails_every_attempt_is_recorded_and_the_grid_finishes(tmp_path):
     jobs = [make_test_job("boom", method="crash"),
             make_test_job("ok1", seconds=0.3), make_test_job("ok2", seconds=0.3)]
@@ -103,7 +102,7 @@ def test_job_that_fails_every_attempt_is_recorded_and_the_grid_finishes(tmp_path
     coord.stop()
 
 
-# -- the faster Gibbs sampler gives the same answers as the old one ----------------
+# the faster Gibbs sampler gives the same answers as the old one
 def test_fast_gibbs_matches_reference_implementation():
     sys.path.insert(0, str(Path(__file__).parent))
     from reference_gibbs import find_motif_gibbs as reference

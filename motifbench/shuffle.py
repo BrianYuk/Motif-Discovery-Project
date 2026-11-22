@@ -1,9 +1,3 @@
-"""Dinucleotide-preserving shuffle (Altschul and Erickson, 1985).
-
-Used to make negative sequences for the CNN: each shuffled copy keeps the exact
-count of every base pair (AA, AC, ...) of its original but scrambles the order,
-so a planted motif is destroyed while the base composition is kept.
-"""
 import numpy as np
 
 
