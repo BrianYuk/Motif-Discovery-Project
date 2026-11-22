@@ -11,7 +11,7 @@ from motifbench.shuffle import dinucleotide_shuffle
 STRONG = "MA0841.2"   # NFE2, 16.6 bits
 
 
-# -- generator ---------------------------------------------------------------
+# generator
 def test_generator_records_sites_and_share():
     ds = generate_dataset(get_pwm(STRONG), 50, seq_len=100, frac_with_site=0.4, seed=3)
     assert len(ds.sequences) == 50 and all(len(s) == 100 for s in ds.sequences)
@@ -35,7 +35,7 @@ def test_planted_sites_score_like_the_motif():
     assert np.mean(scores) > 10        # planted sites look like the motif
 
 
-# -- shuffle -----------------------------------------------------------------
+# shuffle
 def test_dinucleotide_shuffle_keeps_pair_counts():
     rng = np.random.default_rng(0)
     seq = generate_dataset(get_pwm(STRONG), 1, seq_len=300, seed=2).sequences[0]
@@ -47,7 +47,7 @@ def test_dinucleotide_shuffle_keeps_pair_counts():
         assert sh != seq
 
 
-# -- metrics -----------------------------------------------------------------
+# metrics
 def test_information_content_limits():
     assert information_content(np.full((4, 5), 0.25)) == pytest.approx(0.0)
     one_hot = np.eye(4)[:, [0, 1, 2, 3, 0]] * 0.997 + 0.001
@@ -69,7 +69,7 @@ def test_site_metrics_counts():
     assert m["precision"] == pytest.approx(1 / 3) and m["recall"] == pytest.approx(1 / 3)
 
 
-# -- methods -----------------------------------------------------------------
+# methods
 @pytest.mark.parametrize("method,kwargs", [("em", {"n_starts": 5}), ("gibbs", {"n_sweeps": 60, "burn_in": 10})])
 def test_classical_methods_recover_strong_motif(method, kwargs):
     pwm = get_pwm(STRONG)

@@ -1,11 +1,3 @@
-"""Gibbs site sampler for motif discovery (Lawrence et al., 1993), ZOOPS version.
-
-State: one site position per sequence, or None for "no site". Each step removes
-one sequence, rebuilds the PWM from the sites in all the others, and draws a new
-position for the removed sequence in proportion to its likelihood ratio R_n(a),
-with "no site" as one more option. Occasional phase shifts slide every site a few
-positions so the sampler does not lock onto a shifted copy of the motif.
-"""
 import numpy as np
 from scipy.special import logsumexp
 
@@ -29,8 +21,6 @@ def _site_counts(win, sites):
 
 
 def zoops_score(win, sites, log_bg, pseudocount):
-    """Objective shared with EM: sum_n log[(1-g) + (g/m) sum_a R_n(a)], with the PWM
-    and g estimated from the current alignment."""
     n_seqs, m = win.shape[0], win.shape[1]
     k = sum(a is not None for a in sites)
     pwm = _pwm_from_counts(_site_counts(win, sites), k, pseudocount)
@@ -41,10 +31,7 @@ def zoops_score(win, sites, log_bg, pseudocount):
 
 
 def _draw(logits, rng):
-    """Sample an index with probability proportional to exp(logits).
-
-    Same steps and the same single random number as rng.choice(len(p), p=p) with
-    p = exp(logits - logsumexp(logits)), without its per-call overhead."""
+    # Sample an index with probability proportional to exp(logits).
     top = logits.max()
     p = np.exp(logits - (top + np.log(np.exp(logits - top).sum())))
     cdf = p.cumsum()
@@ -103,7 +90,7 @@ def gibbs_single(X, width, rng, background, pseudocount=DEFAULT_PSEUDOCOUNT,
 
 
 def _best_phase_shift(win, sites, log_bg, pseudocount, max_shift):
-    """Try sliding every site by -max_shift..max_shift; keep the shift that scores best."""
+    # Try sliding every site by -max_shift..max_shift; keep the shift that scores best.
     m = win.shape[1]
     best_score, _ = zoops_score(win, sites, log_bg, pseudocount)
     best = sites
@@ -118,7 +105,7 @@ def _best_phase_shift(win, sites, log_bg, pseudocount, max_shift):
 
 
 def find_motif_gibbs(X, width, seed=0, n_starts=1, background=(0.25,) * 4, **kwargs) -> dict:
-    """Run the sampler from `n_starts` seeds and keep the best-scoring alignment."""
+    # Run the sampler from `n_starts` seeds and keep the best-scoring alignment.
     rng = np.random.default_rng(seed)
     best = None
     for _ in range(n_starts):

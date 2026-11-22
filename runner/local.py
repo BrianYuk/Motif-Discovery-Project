@@ -1,4 +1,3 @@
-"""Run a coordinator and N worker processes on one machine."""
 import multiprocessing as mp
 import time
 

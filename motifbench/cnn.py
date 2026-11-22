@@ -1,10 +1,3 @@
-"""One-layer CNN motif model (DeepBind style) with filter-to-PWM conversion.
-
-The network separates the input sequences from dinucleotide-shuffled copies.
-Each first-layer filter scans the one-hot sequence like a log-odds PWM; after
-training, a filter becomes a PWM by counting the bases of the windows that
-activate it strongly.
-"""
 import numpy as np
 
 from .alphabet import one_hot
@@ -37,7 +30,7 @@ def build_model(width: int, n_filters: int):
 
 
 def make_training_set(X: np.ndarray, rng: np.random.Generator):
-    """Positives = the sequences; negatives = one dinucleotide shuffle of each."""
+    # Positives = the sequences; negatives = one dinucleotide shuffle of each.
     neg = encode_all([dinucleotide_shuffle(decode(row), rng) for row in X])
     data = np.concatenate([one_hot(X), one_hot(neg)])
     labels = np.concatenate([np.ones(len(X)), np.zeros(len(neg))]).astype(np.float32)
@@ -79,8 +72,7 @@ def train(model, data, labels, rng, epochs=100, batch_size=64, lr=1e-2,
 
 
 def filter_to_pwm(acts: np.ndarray, win: np.ndarray, threshold_frac=0.5, pseudocount=0.25):
-    """acts: (N, m) activations of one filter on the positives; win: (N, m, W) windows.
-    Count the bases of every window whose activation exceeds threshold_frac x max."""
+    # Count the bases of every window whose activation exceeds threshold_frac x max
     width = win.shape[-1]
     peak = acts.max()
     counts = np.zeros((4, width))
@@ -110,8 +102,7 @@ def find_motif_cnn(X, width, seed=0, n_filters=16, background=None, **train_kwar
         act_pos = model.activations(pos).numpy()          # (N, F, m)
         act_neg = model.activations(neg).numpy()
     weights = model.out.weight.detach().numpy()[0]        # (F,)
-    # The filter that best separates positives from negatives, weighted by how the
-    # output layer uses it.
+    # The filter that best separates positives from negatives, weighted by how the output layer uses it.
     gain = weights * (act_pos.max(axis=2).mean(axis=0) - act_neg.max(axis=2).mean(axis=0))
     f = int(np.argmax(gain))
     acts = act_pos[:, f, :]

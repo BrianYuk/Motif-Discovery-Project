@@ -1,4 +1,3 @@
-"""Synthetic benchmark generator: plant a PWM into random DNA and record where."""
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -19,7 +18,7 @@ class Dataset:
 
 
 def sample_site(pwm: np.ndarray, rng: np.random.Generator) -> np.ndarray:
-    """Draw one W-long site, one base per column from that column's probabilities."""
+    # Draw one W-long site, one base per column from that column's probabilities.
     cum = np.cumsum(pwm, axis=0)
     u = rng.random(pwm.shape[1])
     return (u[None, :] > cum).sum(axis=0).astype(np.int8)
@@ -33,11 +32,7 @@ def generate_dataset(
     seed: int = 0,
     background=(0.25, 0.25, 0.25, 0.25),
 ) -> Dataset:
-    """Random background sequences; a chosen share get one planted site (forward strand).
-
-    frac_with_site = 0 gives the no-motif control. The number of sequences with a
-    site is round(frac * n), and which sequences get one is random.
-    """
+    # Random background sequences; a chosen share get one planted site (forward strand).
     pwm = np.asarray(pwm, dtype=float)
     width = pwm.shape[1]
     if seq_len < width:

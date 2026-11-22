@@ -1,4 +1,3 @@
-"""Run one benchmark job and build its result record."""
 import hashlib
 import json
 import time
@@ -16,9 +15,6 @@ def _r(x):
 
 
 def _run_test_job(job: dict) -> dict:
-    """Test-only jobs, so failure tests do not wait on real motif finding.
-    "sleep": wait settings["seconds"], then return a fixed result.
-    "crash": raise, which ends the worker as a crash would."""
     if job["method"] == "crash":
         raise RuntimeError(f"test job {job['job_id']} crashed its worker on purpose")
     t0 = time.perf_counter()

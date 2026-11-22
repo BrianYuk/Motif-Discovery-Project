@@ -1,4 +1,3 @@
-"""The one interface every method shares, so evaluation code treats them alike."""
 import numpy as np
 
 from .alphabet import encode_all
@@ -7,11 +6,7 @@ METHODS = ("em", "gibbs", "cnn")
 
 
 def find_motif(sequences, width: int, method: str, seed: int = 0, **kwargs) -> dict:
-    """Find one motif of the given width.
-
-    Returns {"pwm": 4 x W array, "sites": start position per sequence or None,
-             "score": method's own objective, "extra": method details}.
-    """
+    # Find one motif of the given width.
     X = sequences if isinstance(sequences, np.ndarray) else encode_all(sequences)
     if method == "em":
         from .em import find_motif_em

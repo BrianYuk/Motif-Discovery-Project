@@ -20,7 +20,7 @@ BARS = " ▁▂▃▄▅▆▇█"
 
 
 def ic_bars(pwm):
-    """One bar per column, height = information content of that column (0-2 bits)."""
+    # One bar per column, height = information content of that column (0-2 bits).
     p = np.clip(pwm, 1e-12, 1)
     col_ic = (p * np.log2(p / 0.25)).sum(axis=0)
     return "".join(BARS[min(8, int(round(v / 2 * 8)))] for v in col_ic)

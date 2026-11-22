@@ -1,18 +1,17 @@
-"""Evaluation measures: information content, motif similarity, site accuracy."""
 import numpy as np
 
 from .alphabet import revcomp_pwm
 
 
 def information_content(pwm: np.ndarray, background=(0.25, 0.25, 0.25, 0.25)) -> float:
-    """IC = sum_j sum_b p_bj log2(p_bj / q_b), in bits."""
+    # IC = sum_j sum_b p_bj log2(p_bj / q_b), in bits.
     p = np.clip(np.asarray(pwm, dtype=float), 1e-12, 1.0)
     q = np.asarray(background, dtype=float)[:, None]
     return float((p * np.log2(p / q)).sum())
 
 
 def _column_corr(a: np.ndarray, b: np.ndarray) -> np.ndarray:
-    """Pearson correlation between matching columns; 0 where a column is flat."""
+    # Pearson correlation between matching columns; 0 where a column is flat.
     a = a - a.mean(axis=0)
     b = b - b.mean(axis=0)
     num = (a * b).sum(axis=0)
@@ -23,14 +22,7 @@ def _column_corr(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 
 
 def pwm_similarity(found: np.ndarray, planted: np.ndarray, min_overlap: int = None) -> dict:
-    """Tomtom-style score between two PWMs (4 x W each, widths may differ).
-
-    For every relative offset and for both strands of `found`, the score is the sum
-    of column-wise Pearson correlations over the overlapping columns, divided by
-    the larger width, so a partial overlap is penalised. Range is -1 to 1; 1 means
-    identical column shapes at full overlap. Returns the best score with its offset
-    (position of found's column 0 relative to planted's column 0) and strand.
-    """
+    # Tomtom-style score between two PWMs (4 x W each, widths may differ).
     found = np.asarray(found, dtype=float)
     planted = np.asarray(planted, dtype=float)
     wf, wp = found.shape[1], planted.shape[1]
@@ -51,12 +43,7 @@ def pwm_similarity(found: np.ndarray, planted: np.ndarray, min_overlap: int = No
 
 
 def site_metrics(predicted, true, tolerance: int = 2) -> dict:
-    """Precision, recall and F1 of predicted site starts.
-
-    `predicted` and `true` are lists (one entry per sequence) of a start position or
-    None. A prediction is a true positive when its sequence has a planted site that
-    starts within `tolerance` positions of it.
-    """
+    # Precision, recall and F1 of predicted site starts.
     if len(predicted) != len(true):
         raise ValueError("predicted and true must have one entry per sequence")
     tp = fp = fn = 0
@@ -75,10 +62,6 @@ def site_metrics(predicted, true, tolerance: int = 2) -> dict:
 
 
 def align_sites(predicted, offset: int, strand: str = "+"):
-    """Move predicted starts onto the planted motif's frame using the offset that
-    pwm_similarity found, so a motif found a few columns out of phase is not scored
-    as all-wrong. Only forward-strand alignments are moved: the synthetic sites are
-    planted on the forward strand, so a reverse-strand match is left as it is."""
     if strand != "+":
         return list(predicted)
     return [None if a is None else a - offset for a in predicted]

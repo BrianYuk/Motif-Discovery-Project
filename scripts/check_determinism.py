@@ -1,5 +1,3 @@
-"""Run a small grid (all three methods) on 1 and on 2 local workers and check that
-every result is identical. Usage: python scripts/check_determinism.py [out_dir]"""
 import json
 import shutil
 import sys
