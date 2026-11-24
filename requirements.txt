@@ -3,3 +3,6 @@ scipy>=1.11
 torch>=2.2        # CNN only; EM, Gibbs sampling and the runner work without it
 pytest>=8         # tests
 pyjaspar>=3.0     # only for scripts/build_profiles.py; data/profiles.json is already built
+pandas>=2.0       # scripts/collect_results.py, make_figures.py
+matplotlib>=3.8   # figures
+logomaker>=0.8    # sequence logos

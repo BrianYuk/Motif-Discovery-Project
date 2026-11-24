@@ -80,6 +80,22 @@ Grids (`runner/grid.py`): `tiny` (8 quick jobs, for tests), `pilot` (18 conditio
 x 3 methods, for timing), `full` (18 conditions x 10 replicates x 3 methods x 3 restarts = 1,620 jobs).
 Every seed comes from a SHA-256 hash of the dataset or job ID, so a job gives the same result on any worker.
 
+## Figures
+
+```bash
+python -m runner local --grid pilot --workers 2 --results results/pilot
+python scripts/collect_results.py results/pilot results/pilot.csv   # one row per job
+python scripts/make_figures.py results/pilot.csv                    # writes figures/
+python scripts/demo.py --logos                                      # live demo with logos
+```
+
+`collect_results.py` splits `dataset_id` into `n_seqs`, `frac_with_site`, `strength` and `replicate`.
+`make_figures.py` saves `figures/similarity_vs_n.png` (one panel per share of sequences with a site;
+lines are the mean over runs, bands the min-max range) and `figures/logos_<condition>.png`
+(planted vs. EM, Gibbs and CNN; choose the condition with `--condition`). The plotting
+functions `plot_logo` and `plot_similarity_vs_n` are in `motifbench/plots.py`.
+With one replicate per condition (pilot), a band is only the spread over the two strength groups.
+
 ## Layout
 
 ```

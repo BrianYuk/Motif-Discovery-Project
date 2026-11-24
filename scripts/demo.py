@@ -3,6 +3,7 @@
     python scripts/demo.py                    # NFE2, 300 sequences, half with a site
     python scripts/demo.py --profile MA0162.5 --n 300 --frac 0.2
     python scripts/demo.py --no-cnn           # skip the CNN (no PyTorch needed)
+    python scripts/demo.py --logos            # also show planted and found logos side by side
 """
 import argparse
 import sys
@@ -33,6 +34,9 @@ def main():
     ap.add_argument("--frac", type=float, default=0.5, help="share of sequences with a site")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--no-cnn", action="store_true")
+    ap.add_argument("--logos", action="store_true",
+                    help="show the planted and found sequence logos side by side")
+    ap.add_argument("--save-logos", metavar="FILE", help="save the logo figure instead of showing it")
     args = ap.parse_args()
 
     profiles = load_profiles()
@@ -51,16 +55,37 @@ def main():
                ("CNN", "cnn", {})]
     if args.no_cnn:
         methods = methods[:2]
+    panels = [("Planted", planted)]
     for label, method, kwargs in methods:
         t0 = time.perf_counter()
         res = find_motif(ds.sequences, width, method, seed=args.seed, **kwargs)
         dt = time.perf_counter() - t0
         sim = pwm_similarity(res["pwm"], planted)
         f1 = site_metrics(res["sites"], ds.sites)["f1"]
+        panels.append((f"{label} (similarity {sim['score']:.2f})", res["pwm"]))
         print(f"{label:10}{consensus(res['pwm']):<{width + 4}}{ic_bars(res['pwm']):<{width + 4}}"
               f"{sim['score']:>11.3f}{f1:>9.2f}{dt:>7.1f}s")
     print("\nSimilarity: Tomtom-style column correlation with the planted matrix (1 = identical).")
     print("Lower-case consensus letters mark weak columns (top base below 50%).")
+    if args.logos or args.save_logos:
+        show_logos(panels, args.save_logos)
+
+
+def show_logos(panels, save=None):
+    import matplotlib
+    if save:
+        matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from motifbench.plots import plot_logo
+    fig, axes = plt.subplots(1, len(panels), figsize=(3.6 * len(panels), 2.6))
+    for ax, (title, pwm) in zip(axes, panels):
+        plot_logo(np.asarray(pwm), ax, title)
+    fig.tight_layout()
+    if save:
+        fig.savefig(save, dpi=200)
+        print(f"saved {save}")
+    else:
+        plt.show()
 
 
 if __name__ == "__main__":
